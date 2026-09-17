@@ -193,6 +193,26 @@ section[id],.client{scroll-margin-top:86px}
 }
 .creative--empty .creative__img{aspect-ratio:16/6;display:flex;align-items:center;justify-content:center}
 .creative--empty .creative__img p{color:var(--faint);font-family:var(--mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase}
+/* video gallery */
+.vgrid{display:flex;flex-wrap:wrap;gap:12px;
+  opacity:0;transform:translateY(10px);transition:opacity .7s ease,transform .7s cubic-bezier(.16,1,.3,1)}
+.creative.in .vgrid{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.vgrid{opacity:1;transform:none}}
+.vgrid--v .vtile{flex:0 1 240px;aspect-ratio:9/16}
+.vgrid--h .vtile{flex:1 1 380px;max-width:640px;aspect-ratio:16/9}
+.vtile{position:relative;background:#050505;border:1px solid var(--line);overflow:hidden;cursor:pointer}
+.vtile__poster{width:100%;height:100%;object-fit:cover;filter:grayscale(1) contrast(1.02);transition:filter .4s}
+.vtile:hover .vtile__poster{filter:none}
+.vtile__play{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:56px;height:56px;border-radius:50%;border:1px solid rgba(255,255,255,.85);
+  background:rgba(0,0,0,.35);backdrop-filter:blur(2px);pointer-events:none;transition:background .2s,transform .2s}
+.vtile__play::before{content:'';position:absolute;left:52%;top:50%;transform:translate(-50%,-50%);
+  border-style:solid;border-width:9px 0 9px 15px;border-color:transparent transparent transparent #fff}
+.vtile:hover .vtile__play{background:#fff;transform:translate(-50%,-50%) scale(1.05)}
+.vtile:hover .vtile__play::before{border-left-color:#000}
+.vtile__hit{position:absolute;inset:0;background:none;border:0;cursor:pointer}
+.vtile.playing{cursor:default}
+.vtile iframe{width:100%;height:100%;border:0;display:block}
 
 /* ---------- ENGAGEMENT ---------- */
 .model{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);margin-top:56px}
@@ -512,6 +532,15 @@ const CLIENTS = {
     res:[{v:'43%↓',l:'cost / qualifying lead'}]},
 };
 
+/* Playable videos per client (YouTube IDs). Add/remove IDs here to change a
+   client's video gallery. vaspect: '9/16' for Shorts, '16/9' for landscape. */
+Object.assign(CLIENTS.magniflex ,{vaspect:'9/16', videos:['3qkGKmBnnxA','fImvylM3Zzk','pPvqZJkU2lw']});
+Object.assign(CLIENTS.unbound   ,{vaspect:'9/16', videos:['YV1vhdHXgWs','UmjumrOC6jk']});
+Object.assign(CLIENTS.chanakya  ,{vaspect:'16/9', videos:['5QbFl3Xvt4s','1GE_LKmTiS8','wGWqtFvELpY','8FhcMgCAb78']});
+Object.assign(CLIENTS.supertails,{vaspect:'9/16', videos:['5eKO06r4KGU','6Gr19gtrUuk','SrnURJEB8FY']});
+Object.assign(CLIENTS.atovio    ,{vaspect:'9/16', videos:['14djQn34gMc','1bq0Y9uKgM0','a7fBxjWb3HA']});
+Object.assign(CLIENTS.mschief   ,{vaspect:'9/16', videos:['HcH9dxWvfSg','ZU61ZzWfSlM','Gt7hJp3Ylgw']});
+
 /* ===================== RENDER ===================== */
 const A = window.WIRALITY_ASSETS || {creatives:{},logo:'',mark:''};
 const $ = (s,r=document)=>r.querySelector(s);
@@ -566,9 +595,18 @@ const c=$('#cadence');SITE.cadence.forEach(x=>{
     const sec=el('section','client');sec.id='c-'+id;
     const res=c.res.map(r=>`<div class="r"><div class="v">${r.v}</div><div class="l">${r.l}</div></div>`).join('');
     const app=c.app.map((a,j)=>`<li data-edit="${id}.app.${j}">${a}</li>`).join('');
-    const img = A.creatives[id]
-      ? `<div class="creative__img"><img src="${A.creatives[id]}" alt="${c.name} performance creatives" loading="lazy"></div>`
-      : `<div class="creative__img"><p>Lead-gen engagement — no static reel</p></div>`;
+    let media, capL='Creative — '+c.name, capR='//'+nn, emptyCls='';
+    if(c.videos && c.videos.length){
+      const asp = c.vaspect==='16/9' ? 'h' : 'v';
+      const tiles = c.videos.map(vid=>`<div class="vtile" data-yt="${vid}"><img class="vtile__poster" src="https://i.ytimg.com/vi/${vid}/hqdefault.jpg" alt="${c.name} video" loading="lazy"><span class="vtile__play"></span><button class="vtile__hit" aria-label="Play ${c.name} video"></button></div>`).join('');
+      media=`<div class="vgrid vgrid--${asp}">${tiles}</div>`;
+      capL='Video — '+c.name; capR='click to play';
+    } else if(A.creatives[id]){
+      media=`<div class="creative__img"><img src="${A.creatives[id]}" alt="${c.name} performance creatives" loading="lazy"></div>`;
+    } else {
+      media=`<div class="creative__img"><p>Lead-gen engagement — no static reel</p></div>`;
+      emptyCls=' creative--empty';
+    }
     sec.innerHTML=`
       <div class="client__head">
         <div>
@@ -584,9 +622,9 @@ const c=$('#cadence');SITE.cadence.forEach(x=>{
           <div class="client__res">${res}</div>
         </div>
       </div>
-      <div class="creative${A.creatives[id]?'':' creative--empty'}">
-        <div class="creative__cap"><span>Creative — ${c.name}</span><span>//${nn}</span></div>
-        ${img}
+      <div class="creative${emptyCls}">
+        <div class="creative__cap"><span>${capL}</span><span>${capR}</span></div>
+        ${media}
       </div>`;
     g.appendChild(sec);
   });
@@ -608,6 +646,20 @@ addEventListener('scroll',()=>{nav.classList.toggle('scrolled',scrollY>40)},{pas
 const links=$('#links'),burger=$('#burger');
 burger.addEventListener('click',()=>{const o=links.classList.toggle('open');burger.textContent=o?'Close':'Menu';});
 links.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>{links.classList.remove('open');burger.textContent='Menu';}));
+
+// click-to-play video (inline, with sound — playback stays within the page)
+$('#clients').addEventListener('click',(e)=>{
+  const tile=e.target.closest('.vtile');
+  if(!tile||tile.classList.contains('playing'))return;
+  const vid=tile.getAttribute('data-yt');
+  tile.classList.add('playing');
+  const f=el('iframe');
+  f.src='https://www.youtube-nocookie.com/embed/'+vid+'?autoplay=1&playsinline=1&rel=0&modestbranding=1';
+  f.title='Video';f.loading='lazy';
+  f.setAttribute('allow','autoplay; encrypted-media; picture-in-picture; fullscreen');
+  f.setAttribute('allowfullscreen','');
+  tile.innerHTML='';tile.appendChild(f);
+});
 
 // reveals
 const io=new IntersectionObserver((es)=>{
